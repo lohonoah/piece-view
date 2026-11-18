@@ -1,3 +1,4 @@
+import { BrandMark } from './BrandMark'
 import { useMemo, useState } from 'react'
 import {
   Area,
@@ -114,7 +115,7 @@ function App() {
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`} aria-label="Primary navigation">
-        <div className="brand"><span className="brand-mark"><span /></span><strong>PIECE VIEW</strong></div>
+        <div className="brand"><BrandMark /><strong>PIECE VIEW</strong></div>
         <button className="mobile-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={20} /></button>
         <nav>
           <p className="nav-label">Workspace</p>
@@ -239,7 +240,7 @@ function App() {
       {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setAuthOpen(false)}>
         <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={e => e.stopPropagation()}>
           <button className="modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X size={19} /></button>
-          <div className="auth-brand"><span className="brand-mark"><span /></span><strong>PIECE VIEW</strong></div>
+          <div className="auth-brand"><BrandMark /><strong>PIECE VIEW</strong></div>
           <h2 id="auth-title">Welcome back</h2><p>Sign in to continue to your dashboard.</p>
           <form onSubmit={submitAuth} noValidate>
             <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></label>
