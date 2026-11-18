@@ -33,7 +33,7 @@ function navigate(hash:string){ window.location.hash = hash }
 
 function Landing({openAuth}:{openAuth:(mode:'login'|'signup')=>void}){
   return <div className="landing">
-    <header className="landing-nav"><button className="landing-brand" onClick={()=>navigate('#/')}><BrandMark /><strong>PIECE VIEW</strong></button><nav><button onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Collection</button><button onClick={()=>document.getElementById('story')?.scrollIntoView({behavior:'smooth'})}>Our story</button><button onClick={()=>navigate('#/dashboard/overview')}>Dashboard</button></nav><div><button className="landing-signin" onClick={()=>openAuth('login')}>Sign in</button><button className="landing-signup" onClick={()=>openAuth('signup')}>Sign up</button><button className="landing-shop" onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Shop now</button></div></header>
+    <header className="landing-nav"><button type="button" className="landing-brand" onClick={()=>navigate('#/')}><BrandMark /><strong>PIECE VIEW</strong></button><nav><button onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Collection</button><button onClick={()=>document.getElementById('story')?.scrollIntoView({behavior:'smooth'})}>Our story</button><button onClick={()=>navigate('#/dashboard/overview')}>Dashboard</button></nav><div><button type="button" className="landing-signin" onClick={()=>openAuth('login')}>Sign in</button><button type="button" className="landing-signup" onClick={()=>openAuth('signup')}>Sign up</button><button type="button" className="landing-shop" onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Shop now</button></div></header>
     <main>
       <section className="hero"><div className="hero-copy"><p className="landing-eyebrow">THE NEW HAIR STANDARD</p><h1>Beautifully made.<br/><em>Unmistakably yours.</em></h1><p>Premium wigs and extensions designed for effortless wear, natural finishes, and confidence that lasts.</p><div className="hero-actions"><button className="hero-primary" onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Explore collection <ArrowRight size={17}/></button><button className="hero-secondary" onClick={()=>navigate('#/dashboard/overview')}>View business</button></div></div><div className="hero-image"><img src="/hair/silk-bob.jpg" alt="Premium Piece View straight wig on a model"/><div className="hero-card"><span>Limited edition</span><strong>Silk Press Bob</strong><p>From ₦48,500</p></div></div></section>
       <section className="trust-strip"><div><strong>100%</strong><span>Premium human hair</span></div><div><strong>4.9/5</strong><span>Customer rating</span></div><div><strong>48 hr</strong><span>Lagos dispatch</span></div><div><strong>7 day</strong><span>Easy returns</span></div></section>
@@ -46,8 +46,8 @@ function Landing({openAuth}:{openAuth:(mode:'login'|'signup')=>void}){
 function App(){
   const [hash,setHash]=useState(window.location.hash || '#/')
   const [menuOpen,setMenuOpen]=useState(false)
-  const [authOpen,setAuthOpen]=useState(false)
-  const [authMode,setAuthMode]=useState<'login'|'signup'>('login')
+  const [authOpen,setAuthOpen]=useState(window.location.hash.startsWith('#/auth/'))
+  const [authMode,setAuthMode]=useState<'login'|'signup'>(window.location.hash==='#/auth/signup'?'signup':'login')
   const [signedIn,setSignedIn]=useState(false)
   const [currentUser,setCurrentUser]=useState<{name:string,email:string}|null>(null)
   const [email,setEmail]=useState('')
@@ -60,13 +60,16 @@ function App(){
   const [notice,setNotice]=useState('')
 
   useEffect(()=>{if(!supabase)return;supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){const user={name:session.user.user_metadata?.full_name||session.user.email?.split('@')[0]||'User',email:session.user.email||''};setCurrentUser(user);setSignedIn(true)}});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{if(session?.user){const user={name:session.user.user_metadata?.full_name||session.user.email?.split('@')[0]||'User',email:session.user.email||''};setCurrentUser(user);setSignedIn(true)}else{setCurrentUser(null);setSignedIn(false)}});return()=>subscription.unsubscribe()},[])
-  useEffect(()=>{const change=()=>{setHash(window.location.hash || '#/');setMenuOpen(false);window.scrollTo({top:0,behavior:'smooth'})};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change)},[])
+  useEffect(()=>{const change=()=>{const nextHash=window.location.hash || '#/';setHash(nextHash);setMenuOpen(false);const auth=nextHash.startsWith('#/auth/');setAuthOpen(auth);if(auth)setAuthMode(nextHash==='#/auth/signup'?'signup':'login');window.scrollTo({top:0,behavior:'smooth'})};change();window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change)},[])
   const chartData=useMemo(()=>period==='Month'?revenueData.slice(-3):period==='Quarter'?revenueData.slice(-6):revenueData,[period])
   const route=hash.replace(/^#\/dashboard\//,'')
   const dashboard=hash.startsWith('#/dashboard/')
   const submitAuth=async (event:React.FormEvent)=>{event.preventDefault();if(!/^\S+@\S+\.\S+$/.test(email))return setError('Enter a valid email address.');if(password.length<8)return setError('Password must be at least 8 characters.');if(authMode==='signup'&&name.trim().length<2)return setError('Enter your full name.');if(authMode==='signup'&&password!==confirmPassword)return setError('Passwords do not match.');if(!supabase)return setError('Authentication is not configured.');setError('');const result=authMode==='signup'?await supabase.auth.signUp({email,password,options:{data:{full_name:name.trim()},emailRedirectTo:`${window.location.origin}/#/`}}):await supabase.auth.signInWithPassword({email,password});if(result.error)return setError(result.error.message);if(authMode==='signup'&&!result.data.session){setNotice('Check your email to confirm your account');setAuthOpen(false);return}setAuthOpen(false)}
 
-  if(!dashboard) return <><Landing openAuth={(mode)=>{setAuthMode(mode);setError('');setAuthOpen(true)}}/>{authOpen&&<AuthModal close={()=>setAuthOpen(false)} submit={submitAuth} email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} name={name} setName={setName} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} authMode={authMode} setAuthMode={setAuthMode} />}</>
+  const openAuth=(mode:'login'|'signup')=>{setAuthMode(mode);setError('');setAuthOpen(true);window.location.hash=`#/auth/${mode}`}
+  const closeAuth=()=>{setAuthOpen(false);if(window.location.hash.startsWith('#/auth/'))window.location.hash='#/'}
+
+  if(!dashboard) return <><Landing openAuth={openAuth}/>{authOpen&&<AuthModal close={closeAuth} submit={submitAuth} email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} name={name} setName={setName} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} authMode={authMode} setAuthMode={setAuthMode} />}</>
 
   const filtered=transactions.filter(item=>`${item.name} ${item.email} ${item.status}`.toLowerCase().includes(query.toLowerCase()))
   const go=(name:string)=>navigate(`#/dashboard/${name}`)
