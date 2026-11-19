@@ -1,6 +1,11 @@
 -- Inventory safety migration for existing Piece View Supabase projects.
 -- Apply after the customer-commerce schema exists. Safe to reapply.
 
+alter table public.admin_orders add column if not exists public_id text;
+create unique index if not exists admin_orders_public_id_key
+  on public.admin_orders (public_id)
+  where public_id is not null;
+
 create or replace function public.place_customer_order(
   p_customer_name text,
   p_customer_email text,
