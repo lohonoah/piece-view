@@ -1,5 +1,5 @@
 .admin-catalog{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:18px;align-items:start}
-.admin-catalog-form,.admin-catalog-list{min-width:0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px}
+.admin-catalog-form,.admin-catalog-list{min-width:0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;scroll-margin-top:16px}
 .admin-catalog-form{display:grid;gap:12px}
 .admin-catalog-form h2,.admin-catalog-list h2{margin:0 0 4px;font-size:17px}
 .admin-catalog-form label{display:grid;gap:6px;color:var(--ink);font-size:12px;font-weight:650}

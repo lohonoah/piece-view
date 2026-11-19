@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { mapCatalogProduct, PRODUCT_CATEGORIES, type CatalogProduct } from './catalog'
 import { supabase } from './lib/supabase'
 import './AdminCatalog.css'
@@ -45,6 +45,7 @@ function emptyDraft(): ProductDraft {
 }
 
 export function AdminCatalog({ products, onProductsChange, message, setMessage }: AdminCatalogProps) {
+  const formRef = useRef<HTMLFormElement>(null)
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
@@ -184,6 +185,7 @@ export function AdminCatalog({ products, onProductsChange, message, setMessage }
     setImageFile(null)
     setImagePreview('')
     setMessage('')
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const toggleProduct = async (product: CatalogProduct) => {
@@ -198,7 +200,7 @@ export function AdminCatalog({ products, onProductsChange, message, setMessage }
   }
 
   return <section className="admin-catalog">
-    <form className="admin-catalog-form" onSubmit={saveProduct}>
+    <form ref={formRef} className="admin-catalog-form" onSubmit={saveProduct}>
       <h2>{draft.id ? 'Edit product' : 'Add a shop product'}</h2>
       <label>Product name<input value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} required /></label>
       <label>Category<select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>{PRODUCT_CATEGORIES.map(category => <option key={category}>{category}</option>)}</select></label>
