@@ -1,0 +1,40 @@
+.catalog-price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.catalog-price strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.catalog-price del {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.catalog-price small {
+  padding: 3px 7px;
+  border-radius: 20px;
+  background: #fff1ec;
+  color: #bf563c;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.catalog-stock {
+  display: inline-block;
+  margin-top: 6px;
+  color: #48734e;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.catalog-stock.sold-out {
+  color: #b44343;
+}
