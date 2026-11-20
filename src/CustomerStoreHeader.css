@@ -1,0 +1,14 @@
+.customer-store-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+.customer-store-actions>button{min-height:38px;padding:0 11px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font-size:11px;white-space:nowrap}
+.customer-store-actions>.customer-cart-button{background:var(--ink);color:#fff;border-color:var(--ink)}
+.store-account-status{display:flex;align-items:center;gap:8px;text-align:left}
+.store-account-status>span:last-child{display:grid;gap:2px;max-width:130px}
+.store-account-status strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.store-account-status small{font-size:9px;color:#647c64}
+.account-active-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#55a36b;box-shadow:0 0 0 3px #eaf5ec}
+.account-session-status{padding:8px;color:var(--muted);font-size:10px;white-space:nowrap}
+.account-signed-in{display:grid!important;align-content:center;gap:2px}
+.account-signed-in small{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}
+.landing-account-actions .account-session-status{display:block}
+@media(max-width:720px){.customer-store-actions{order:2;margin-left:auto;gap:5px}.customer-store-actions>button{min-height:34px;padding:0 8px;font-size:10px}.customer-store-actions .store-account-status>span:last-child{max-width:90px}.customer-store-actions .store-account-button{display:none}.customer-store-nav nav{order:3}.customer-store-nav{align-items:center}.landing-account-actions .account-signed-in{max-width:118px;padding:0 8px}}
+@media(max-width:420px){.customer-store-actions{width:100%;order:4;justify-content:flex-end}.customer-store-actions .store-account-status{margin-right:auto}.customer-store-actions .store-account-status>span:last-child{max-width:150px}.landing-account-actions .account-signed-in{max-width:104px}}

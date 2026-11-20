@@ -1,0 +1,7 @@
+.modal-backdrop{display:flex;align-items:center;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.auth-modal{width:min(430px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;margin:auto;flex:0 0 auto;scrollbar-gutter:stable}
+.auth-modal form,.auth-modal label{min-width:0}
+.auth-modal input{width:100%;min-width:0}
+@media(max-width:540px){.modal-backdrop{align-items:flex-start;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}.auth-modal{width:100%;max-height:calc(100dvh - max(24px,env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px));padding:24px 20px 20px;border-radius:12px}.auth-modal h2{font-size:26px;line-height:1.15}.auth-brand{margin-bottom:16px}.auth-modal>p{margin:8px 0 16px;line-height:1.5}.auth-modal form{gap:12px}.auth-modal label{gap:6px}.auth-modal input,.submit-button{min-height:46px}}
+@media(max-height:700px){.modal-backdrop{align-items:flex-start}.auth-modal{margin-block:auto}}
+@media(max-width:380px){.auth-modal{padding:20px 16px 16px}.auth-modal h2{font-size:24px}.auth-modal form{gap:10px}.auth-modal .auth-brand{margin-bottom:12px}.auth-modal input,.submit-button{min-height:44px}}
