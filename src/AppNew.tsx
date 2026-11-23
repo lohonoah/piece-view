@@ -24,10 +24,10 @@ const COPYRIGHT_YEAR = new Date().getFullYear()
 function navigate(hash:string){ window.location.hash = hash }
 function navigateToAbout(){const target=document.getElementById('story');if(target){target.scrollIntoView({behavior:'smooth'});return}navigate('#/' );window.setTimeout(()=>document.getElementById('story')?.scrollIntoView({behavior:'smooth'}),120)}
 
-function Landing({openAuth,catalogProducts,catalogLoading,catalogError,signedIn,currentUser,authReady}:{openAuth:(mode:'login'|'signup')=>void,catalogProducts:CatalogProduct[],catalogLoading:boolean,catalogError:string,signedIn:boolean,currentUser:{name:string,email:string}|null,authReady:boolean}){
+function Landing({openAuth,catalogProducts,catalogLoading,catalogError,signedIn,currentUser,authReady,cartCount,wishlistCount}:{openAuth:(mode:'login'|'signup')=>void,catalogProducts:CatalogProduct[],catalogLoading:boolean,catalogError:string,signedIn:boolean,currentUser:{name:string,email:string}|null,authReady:boolean,cartCount:number,wishlistCount:number}){
   const activeProducts=catalogProducts.filter(product=>product.active!==false)
   return <div className="landing">
-    <header className="landing-nav"><button type="button" className="landing-brand" onClick={()=>navigate('#/')}><BrandMark/><strong>PIECE VIEW</strong></button><nav aria-label="Main navigation"><button onClick={()=>navigate('#/shop')}>Shop</button><button onClick={()=>document.getElementById('collection')?.scrollIntoView({behavior:'smooth'})}>Collection</button><button onClick={navigateToAbout}>About</button></nav><div className="landing-account-actions">{!authReady?<span className="account-session-status" role="status">Checking account…</span>:signedIn&&currentUser?<button type="button" className="landing-signin account-signed-in" onClick={()=>navigate('#/dashboard/overview')}><span>My account</span><small>{currentUser.name||currentUser.email}</small></button>:<><button type="button" className="landing-signin" onClick={()=>openAuth('login')}>Sign in</button><button type="button" className="landing-signup" onClick={()=>openAuth('signup')}>Sign up</button></>}<button type="button" className="landing-shop" onClick={()=>navigate('#/cart')}>Cart</button></div></header>
+    <CustomerStoreHeader signedIn={signedIn} currentUser={currentUser} authReady={authReady} openAuth={openAuth} cartCount={cartCount} wishlistCount={wishlistCount}/>
     <main>
       <section className="hero"><div className="hero-copy"><p className="landing-eyebrow">THE NEW HAIR STANDARD</p><h1>Beautifully made.<br/><em>Unmistakably yours.</em></h1><p>Premium wigs and extensions designed for effortless wear, natural finishes, and confidence that lasts.</p><div className="hero-actions"><button className="hero-primary" onClick={()=>navigate('#/shop')}>Explore collection <ArrowRight size={17}/></button><button className="hero-secondary" onClick={()=>navigate('#/dashboard/overview')}>My account</button></div></div><div className="hero-image"><img src="/hair/hd-lace.jpg" alt="Premium Piece View lace wig" onError={(e)=>{const t=e.currentTarget;t.style.display='none';const p=t.closest('.hero-image') as HTMLElement|null;if(p)p.style.background='linear-gradient(135deg,#e8e5dc 0%,#d4c8b8 100%)'}}/><div className="hero-card"><span>Limited edition</span><strong>Silk Press Bob</strong><p>From {String.fromCharCode(8358)}48,500</p></div></div></section>
       <section className="trust-strip"><div><strong>100%</strong><span>Premium human hair</span></div><div><strong>4.9/5</strong><span>Customer rating</span></div><div><strong>48 hr</strong><span>Lagos dispatch</span></div><div><strong>7 day</strong><span>Easy returns</span></div></section>
@@ -277,13 +277,14 @@ function App(){
 
   if(passwordResetRoute)return <AuthModal close={()=>{window.location.pathname='/'} } submit={submitAuth} email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} name={name} setName={setName} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} authMode='reset' setAuthMode={setAuthMode} loading={authLoading}/>
 
+  const totalCartCount = cart.reduce((total, item) => total + (item.quantity || 1), 0)
   const publicCustomerRoute=hash.startsWith('#/shop')||hash.startsWith('#/cart')||hash.startsWith('#/wishlist')||hash.startsWith('#/checkout')||hash.startsWith('#/payment/verify')||hash.startsWith('#/support')||hash.startsWith('#/shipping')||hash.startsWith('#/returns')||hash.startsWith('#/privacy')
-  if(publicCustomerRoute)return <CustomerPage route={hash} cart={cart} setCart={setCart} setOrders={setOrders} setNotifications={setNotifications} wishlist={wishlist} setWishlist={setWishlist} setNotice={setNotice} openAuth={openAuth} signedIn={signedIn} currentUser={currentUser} authReady={authReady} catalogProducts={catalogProducts} catalogLoading={catalogLoading} catalogError={catalogError}/>
+  if(publicCustomerRoute)return <><CustomerPage route={hash} cart={cart} setCart={setCart} setOrders={setOrders} setNotifications={setNotifications} wishlist={wishlist} setWishlist={setWishlist} setNotice={setNotice} openAuth={openAuth} signedIn={signedIn} currentUser={currentUser} authReady={authReady} catalogProducts={catalogProducts} catalogLoading={catalogLoading} catalogError={catalogError}/><MovableCartBag cartCount={totalCartCount}/></>
 
   const admin=window.location.pathname.replace(/\/$/, '')==='/admin'||hash==='#/admin'
   if(admin){if(!signedIn)return <AdminPasswordLogin/>;if(adminRoleLoading)return <AdminAccessLoading/>;if(!isAdmin)return <AdminAccessDenied denied error={adminRoleError}/>;return <AdminPage user={currentUser}/>}
 
-  if(!dashboard) return <><Landing openAuth={openAuth} catalogProducts={catalogProducts} catalogLoading={catalogLoading} catalogError={catalogError} signedIn={signedIn} currentUser={currentUser} authReady={authReady}/>{authOpen&&<AuthModal close={closeAuth} submit={submitAuth} email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} name={name} setName={setName} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} />}{authStatus&&<VerificationStatus status={authStatus} email={email} close={()=>setAuthStatus(null)} />}</>
+  if(!dashboard) return <><Landing openAuth={openAuth} catalogProducts={catalogProducts} catalogLoading={catalogLoading} catalogError={catalogError} signedIn={signedIn} currentUser={currentUser} authReady={authReady} cartCount={totalCartCount} wishlistCount={wishlist.length}/>{authOpen&&<AuthModal close={closeAuth} submit={submitAuth} email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} name={name} setName={setName} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} />}{authStatus&&<VerificationStatus status={authStatus} email={email} close={()=>setAuthStatus(null)} />}<MovableCartBag cartCount={totalCartCount}/></>
 
   const go=(name:string)=>navigate(`#/dashboard/${name}`)
 
@@ -349,7 +350,237 @@ function AdminAccessDenied({denied=true,error=''}:{denied?:boolean,error?:string
 
 function AdminPage({user}:{user:{name:string,email:string}|null}){const [tab,setTab]=useState('overview');const [menuOpen,setMenuOpen]=useState(false);useEffect(()=>{if(!menuOpen)return;const previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==='Escape')setMenuOpen(false)};window.addEventListener('keydown',closeOnEscape);return()=>{document.body.style.overflow=previousOverflow;window.removeEventListener('keydown',closeOnEscape)}},[menuOpen]);const [profiles,setProfiles]=useState<any[]>([]);const [notes,setNotes]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [inventory,setInventory]=useState<any[]>([]);const [activity,setActivity]=useState<any[]>([]);const [customerActivity,setCustomerActivity]=useState<any[]>([]);const [selectedCustomer,setSelectedCustomer]=useState<any|null>(null);const [title,setTitle]=useState('');const [body,setBody]=useState('');const [message,setMessage]=useState('');const [customerDataError,setCustomerDataError]=useState('');const [adminPeriod,setAdminPeriod]=useState('Year');const registeredCustomers=profiles.filter(profile=>profile.role==='customer');useEffect(()=>{if(!supabase)return;const client=supabase;Promise.all([client.rpc('admin_list_customers'),client.from('admin_notes').select('*').order('created_at',{ascending:false}),client.from('admin_orders').select('*').order('created_at',{ascending:false}),client.from('catalog_products').select('*').order('created_at',{ascending:false}),client.from('admin_activity').select('*').order('created_at',{ascending:false}).limit(20),client.rpc('admin_list_customer_activity')]).then(([users,privateNotes,orderRows,stockRows,activityRows,customerActivityRows])=>{if(users.error)setCustomerDataError(users.error.message);else setProfiles(users.data||[]);if(customerActivityRows.error)setCustomerDataError(customerActivityRows.error.message);setNotes(privateNotes.data||[]);if(orderRows.error)setCustomerDataError(orderRows.error.message);else setOrders(orderRows.data||[]);if(stockRows.error)setMessage(stockRows.error.message);else setInventory((stockRows.data||[]).map(mapCatalogProduct));setActivity(activityRows.data||[]);setCustomerActivity(customerActivityRows.data||[])})},[]);useEffect(()=>{if(!supabase)return;const client=supabase;let active=true;const reload=async()=>{const [users,customerRows]=await Promise.all([client.rpc('admin_list_customers'),client.rpc('admin_list_customer_activity')]);if(!active)return;setCustomerDataError(users.error?.message||customerRows.error?.message||'');if(!users.error)setProfiles(users.data||[]);if(!customerRows.error)setCustomerActivity(customerRows.data||[])};reload();const interval=window.setInterval(reload,15000);const channel=client.channel('admin-live-customers').on('postgres_changes',{event:'*',schema:'public',table:'profiles'},reload).on('postgres_changes',{event:'INSERT',schema:'public',table:'admin_customer_activity'},reload).subscribe();return()=>{active=false;window.clearInterval(interval);client.removeChannel(channel)}},[]);const addNote=async(event:React.FormEvent)=>{event.preventDefault();if(!title.trim()||!body.trim())return setMessage('Add a title and message.');if(!supabase)return;const {data:{user:authUser}}=await supabase.auth.getUser();if(!authUser)return;const {error}=await supabase.from('admin_notes').insert({owner_id:authUser.id,title:title.trim(),body:body.trim()});if(error)setMessage(error.message);else{setTitle('');setBody('');setMessage('Private note saved');const {data}=await supabase.from('admin_notes').select('*').order('created_at',{ascending:false});setNotes(data||[])}};const tabs=[['overview','Overview'],['users','Users'],['analytics','Analytics'],['customers','Customers'],['orders','Orders'],['inventory','Products'],['marketing','Marketing'],['notes','Private notes'],['activity','Activity'],['settings','Settings']];return <main className="admin-page"><aside id="admin-navigation" className={`admin-sidebar ${menuOpen?'open':''}`}><button type="button" className="admin-mobile-close" aria-label="Close admin menu" onClick={()=>setMenuOpen(false)}><X/></button><div className="admin-brand"><BrandMark/><strong>PIECE VIEW</strong></div><span>Administrator</span><nav>{tabs.map(([key,label])=><button key={key} className={tab===key?'active':''} onClick={()=>{setTab(key);setMenuOpen(false)}}>{label}</button>)}</nav><button className="admin-logout" onClick={async()=>{if(supabase)await supabase.auth.signOut();navigate('#/')}}>Sign out</button></aside>{menuOpen&&<button type="button" className="admin-menu-backdrop" aria-label="Close admin menu" onClick={()=>setMenuOpen(false)}/>}<section className="admin-main"><header><button type="button" className="admin-header-menu" aria-label="Open admin menu" aria-expanded={menuOpen} aria-controls="admin-navigation" onClick={()=>setMenuOpen(true)}><Menu/></button><div><p>ADMINISTRATION</p><h1>{tabs.find(item=>item[0]===tab)?.[1]}</h1></div><div className="admin-user"><span>{user?.name||'Administrator'}</span><small>{user?.email}</small></div></header>{customerDataError&&<p className="admin-message" role="alert">{customerDataError}</p>}{tab==='overview'&&<><section className="admin-stats"><article><span>Registered customers</span><strong>{registeredCustomers.length}</strong><small>Customer accounts</small></article><article><span>Orders</span><strong>{orders.length}</strong><small>Recorded transactions</small></article><article><span>Shop products</span><strong>{inventory.filter(item=>item.active!==false).length}</strong><small>Active catalog items</small></article><article><span>Private notes</span><strong>{notes.length}</strong><small>Admin-only records</small></article></section><section className="admin-panels"><article><h2>Recent users</h2>{profiles.slice(0,6).map(profile=><div className="admin-row" key={profile.id}><strong>{profile.full_name||profile.email}</strong><span>{profile.role}</span></div>)}{!profiles.length&&<p className="admin-empty">No registered users yet.</p>}</article><article><h2>Recent customer activity</h2>{customerActivity.slice(0,6).map(item=><div className="admin-row" key={item.id}><strong>{item.action}</strong><span>{item.actor_email||item.details||'Customer'}</span><time>{item.created_at?new Date(item.created_at).toLocaleString():''}</time></div>)}{!customerActivity.length&&<p className="admin-empty">No live customer activity yet.</p>}</article></section></>} {tab==='users'&&<section className="admin-customer-layout"><div className="admin-table"><h2>Registered users</h2>{profiles.map(profile=><button className={`admin-customer-row ${selectedCustomer?.id===profile.id?'active':''}`} key={profile.id} onClick={()=>setSelectedCustomer(profile)}><strong>{profile.full_name||profile.email?.split('@')[0]||'No name'}</strong><span>{profile.email}</span><b>{profile.role}</b></button>)}{!profiles.length&&<p className="admin-empty">No registered users yet.</p>}</div>{selectedCustomer?<article className="admin-customer-detail"><h2>Customer details</h2><label>Full name<input value={selectedCustomer.full_name||''} onChange={event=>setSelectedCustomer({...selectedCustomer,full_name:event.target.value})}/></label><label>Email address<input type="email" value={selectedCustomer.email||''} onChange={event=>setSelectedCustomer({...selectedCustomer,email:event.target.value})}/></label><label>Phone number<input value={selectedCustomer.phone||''} onChange={event=>setSelectedCustomer({...selectedCustomer,phone:event.target.value})}/></label><label>Account role<select value={selectedCustomer.role||'customer'} onChange={event=>setSelectedCustomer({...selectedCustomer,role:event.target.value})}><option value="customer">Customer</option><option value="admin">Administrator</option></select></label><button onClick={async()=>{if(!supabase)return;const {error}=await supabase.from('profiles').update({full_name:selectedCustomer.full_name,email:selectedCustomer.email,phone:selectedCustomer.phone||null,role:selectedCustomer.role}).eq('id',selectedCustomer.id);if(error)setMessage(error.message);else{setProfiles(previous=>previous.map(profile=>profile.id===selectedCustomer.id?selectedCustomer:profile));setMessage('Customer details updated')}}}>Save customer</button>{message&&<p className="admin-message">{message}</p>}<h3>Recent customer activity</h3>{customerActivity.filter(item=>item.user_id===selectedCustomer.id).slice(0,12).map(item=><div className="admin-row" key={item.id}><strong>{item.action}</strong><span>{item.details}</span><time>{item.created_at?new Date(item.created_at).toLocaleString():''}</time></div>)}{!customerActivity.some(item=>item.user_id===selectedCustomer.id)&&<p className="admin-empty">No activity recorded for this customer.</p>}</article>:<article className="admin-customer-detail"><h2>Customer details</h2><p className="admin-empty">Select a customer to view and edit details.</p></article>}</section>} {tab==='orders'&&<AdminOrders orders={orders} setOrders={setOrders} setInventory={setInventory} setMessage={setMessage}/>} {tab==='inventory'&&<AdminCatalog products={inventory} onProductsChange={setInventory} message={message} setMessage={setMessage}/>} {tab==='marketing'&&<MarketingAdmin/>} {tab==='notes'&&<section className="admin-note-layout"><form onSubmit={addNote}><h2>Add private note</h2><label>Title<input value={title} onChange={event=>setTitle(event.target.value)} placeholder="Internal title"/></label><label>Message<textarea value={body} onChange={event=>setBody(event.target.value)} placeholder="Sensitive information"/></label>{message&&<p className="admin-message">{message}</p>}<button type="submit">Save securely</button></form><div className="admin-notes"><h2>Private notes</h2>{notes.map(note=><article key={note.id}><strong>{note.title}</strong><p>{note.body}</p><time>{note.created_at?new Date(note.created_at).toLocaleString():''}</time></article>)}{!notes.length&&<p className="admin-empty">No private notes yet.</p>}</div></section>} {tab==='activity'&&<section className="admin-table"><h2>Recent activity</h2><div className="admin-activity-list">{customerActivity.map(item=><div className="admin-table-row" key={item.id}><strong>{item.action}</strong><span>{item.actor_email||'Customer'}</span><time>{item.details||''} · {item.created_at?new Date(item.created_at).toLocaleString():''}</time></div>)}{activity.map(item=><div className="admin-table-row" key={`admin-${item.id}`}><strong>{item.action}</strong><span>{item.actor_email||'System'}</span><time>{item.created_at?new Date(item.created_at).toLocaleString():''}</time></div>)}</div>{!customerActivity.length&&!activity.length&&<p className="admin-empty">No recent activity recorded.</p>}</section>} {tab==='analytics'&&<Suspense fallback={<p className="admin-empty" role="status">Loading analytics…</p>}><LazyAnalytics orders={orders} period={adminPeriod} setPeriod={setAdminPeriod}/></Suspense>} {tab==='customers'&&<section className="admin-table"><h2>Registered customers ({registeredCustomers.length})</h2>{registeredCustomers.map(profile=><div className="admin-table-row" key={profile.id}><strong>{profile.full_name||profile.email?.split('@')[0]||'Customer'}</strong><span>{profile.email}</span><time>{profile.role||'customer'} · {profile.created_at?new Date(profile.created_at).toLocaleDateString():''}</time></div>)}{!registeredCustomers.length&&<p className="admin-empty">No registered customers.</p>}</section>} {tab==='settings'&&<section className="admin-settings"><h2>Security settings</h2><dl><div><dt>Administrator account</dt><dd>{user?.email||'Role-based access'}</dd></div><div><dt>Admin route</dt><dd>/admin</dd></div><div><dt>Authentication</dt><dd>Supabase password login</dd></div><div><dt>Data protection</dt><dd>Row Level Security required</dd></div></dl></section>}</section></main>}
 
-function CustomerStoreHeader({signedIn,currentUser,authReady,openAuth,cartCount,wishlistCount}:{signedIn:boolean,currentUser:{name:string,email:string}|null,authReady:boolean,openAuth:(mode:'login'|'signup')=>void,cartCount:number,wishlistCount:number}){return <header className="customer-store-nav"><button type="button" className="customer-brand" onClick={()=>navigate('#/')}><BrandMark/><strong>PIECE VIEW</strong></button><nav aria-label="Store navigation"><button onClick={()=>navigate('#/shop')}>Shop</button><button onClick={navigateToAbout}>About</button><button onClick={()=>navigate('#/shipping')}>Shipping</button><button onClick={()=>navigate('#/returns')}>Returns</button><button onClick={()=>navigate('#/support')}>Support</button></nav><div className="customer-store-actions">{!authReady?<span className="account-session-status" role="status">Checking account…</span>:signedIn&&currentUser?<><button type="button" className="store-account-status" onClick={()=>navigate('#/dashboard/overview')} aria-label={`Signed in as ${currentUser.email||currentUser.name}`}><span className="account-active-dot"/><span><strong>{currentUser.name||'My account'}</strong><small>Signed in</small></span></button><button type="button" className="store-account-button" onClick={()=>navigate('#/dashboard/overview')}>Account</button></>:<button type="button" className="store-account-button" onClick={()=>openAuth('login')}>Sign in</button>}<button type="button" onClick={()=>navigate('#/wishlist')}>Wishlist ({wishlistCount})</button><button type="button" className="customer-cart-button" onClick={()=>navigate('#/cart')}>Cart ({cartCount})</button></div></header>}
+function MovableCartBag({ cartCount }: { cartCount: number }) {
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem('pieceview_cart_bag_pos')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return null
+  })
+  const isDragging = useRef(false)
+  const dragCoord = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 })
+  const moved = useRef(false)
+
+  const handleStart = (clientX: number, clientY: number, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect()
+    dragCoord.current = {
+      startX: clientX,
+      startY: clientY,
+      initialX: rect.left,
+      initialY: rect.top,
+    }
+    isDragging.current = true
+    moved.current = false
+  }
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging.current) return
+    const dx = clientX - dragCoord.current.startX
+    const dy = clientY - dragCoord.current.startY
+    if (Math.hypot(dx, dy) > 6) {
+      moved.current = true
+    }
+    const maxX = Math.max(10, window.innerWidth - 64)
+    const maxY = Math.max(10, window.innerHeight - 64)
+    const nextX = Math.min(maxX, Math.max(10, dragCoord.current.initialX + dx))
+    const nextY = Math.min(maxY, Math.max(10, dragCoord.current.initialY + dy))
+    setPosition({ x: nextX, y: nextY })
+  }
+
+  const handleEnd = () => {
+    if (!isDragging.current) return
+    isDragging.current = false
+    if (moved.current && position) {
+      localStorage.setItem('pieceview_cart_bag_pos', JSON.stringify(position))
+    }
+  }
+
+  const onTouchStart = (e: React.TouchEvent<HTMLButtonElement>) => {
+    const touch = e.touches[0]
+    handleStart(touch.clientX, touch.clientY, e.currentTarget)
+  }
+  const onTouchMove = (e: React.TouchEvent<HTMLButtonElement>) => {
+    const touch = e.touches[0]
+    handleMove(touch.clientX, touch.clientY)
+  }
+  const onTouchEnd = () => handleEnd()
+
+  const onMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+    handleStart(e.clientX, e.clientY, e.currentTarget)
+    const onMouseMove = (ev: MouseEvent) => handleMove(ev.clientX, ev.clientY)
+    const onMouseUp = () => {
+      handleEnd()
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (moved.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    navigate('#/cart')
+  }
+
+  const style: React.CSSProperties = position
+    ? { left: `${position.x}px`, top: `${position.y}px`, right: 'auto', bottom: 'auto' }
+    : {}
+
+  return (
+    <button
+      type="button"
+      className="movable-cart-bag"
+      style={style}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+      onClick={handleClick}
+      aria-label={`Movable shopping cart with ${cartCount} items`}
+      title="Shopping cart (drag to move anywhere)"
+    >
+      <ShoppingBag size={22} />
+      {cartCount > 0 && <span className="movable-cart-badge">{cartCount}</span>}
+    </button>
+  )
+}
+
+function CustomerStoreHeader({
+  signedIn,
+  currentUser,
+  authReady,
+  openAuth,
+  cartCount,
+  wishlistCount,
+}: {
+  signedIn: boolean
+  currentUser: { name: string; email: string } | null
+  authReady: boolean
+  openAuth: (mode: 'login' | 'signup') => void
+  cartCount: number
+  wishlistCount: number
+}) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  return (
+    <header className="customer-store-nav site-header">
+      <div className="site-header-main">
+        <button type="button" className="customer-brand" onClick={() => navigate('#/')}>
+          <BrandMark />
+          <strong>PIECE VIEW</strong>
+        </button>
+
+        <nav className="header-nav-desktop" aria-label="Store navigation">
+          <button onClick={() => navigate('#/shop')}>Shop</button>
+          <button onClick={() => { if (window.location.hash === '' || window.location.hash === '#/') document.getElementById('collection')?.scrollIntoView({behavior:'smooth'}); else navigate('#/shop'); }}>Collection</button>
+          <button onClick={navigateToAbout}>About</button>
+          <button onClick={() => navigate('#/shipping')}>Shipping</button>
+          <button onClick={() => navigate('#/returns')}>Returns</button>
+          <button onClick={() => navigate('#/support')}>Support</button>
+        </nav>
+
+        <div className="customer-store-actions">
+          {!authReady ? (
+            <span className="account-session-status" role="status">Checking…</span>
+          ) : signedIn && currentUser ? (
+            <button
+              type="button"
+              className="store-account-status"
+              onClick={() => navigate('#/dashboard/overview')}
+              aria-label={`Signed in as ${currentUser.email || currentUser.name}`}
+            >
+              <span className="account-active-dot" />
+              <span>
+                <strong>{currentUser.name?.split(' ')[0] || 'Account'}</strong>
+                <small>Signed in</small>
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="store-account-button"
+              onClick={() => openAuth('login')}
+            >
+              Sign in
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="header-icon-btn"
+            onClick={() => navigate('#/wishlist')}
+            aria-label={`Wishlist (${wishlistCount})`}
+            title="Wishlist"
+          >
+            <Heart size={18} />
+            {wishlistCount > 0 && <span className="header-badge">{wishlistCount}</span>}
+          </button>
+
+          <button
+            type="button"
+            className="header-bag-btn cart-btn"
+            onClick={() => navigate('#/cart')}
+            aria-label={`Shopping bag (${cartCount})`}
+            title="Shopping cart"
+          >
+            <ShoppingBag size={18} />
+            {cartCount > 0 && <span className="header-bag-badge">{cartCount}</span>}
+          </button>
+
+          <button
+            type="button"
+            className="mobile-header-menu-toggle"
+            onClick={() => setMobileMenuOpen(open => !open)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      <nav className="header-mobile-strip" aria-label="Quick links">
+        <button onClick={() => navigate('#/shop')}>Shop</button>
+        <button onClick={() => { if (window.location.hash === '' || window.location.hash === '#/') document.getElementById('collection')?.scrollIntoView({behavior:'smooth'}); else navigate('#/shop'); }}>Collection</button>
+        <button onClick={navigateToAbout}>About</button>
+        <button onClick={() => navigate('#/shipping')}>Shipping</button>
+        <button onClick={() => navigate('#/returns')}>Returns</button>
+        <button onClick={() => navigate('#/support')}>Support</button>
+      </nav>
+
+      {mobileMenuOpen && (
+        <div className="header-mobile-dropdown">
+          <div className="header-mobile-links">
+            <button onClick={() => { navigate('#/shop'); setMobileMenuOpen(false); }}>Shop all pieces <ChevronRight size={16}/></button>
+            <button onClick={() => { if (window.location.hash === '' || window.location.hash === '#/') document.getElementById('collection')?.scrollIntoView({behavior:'smooth'}); else navigate('#/shop'); setMobileMenuOpen(false); }}>Featured collection <ChevronRight size={16}/></button>
+            <button onClick={() => { navigateToAbout(); setMobileMenuOpen(false); }}>About our promise <ChevronRight size={16}/></button>
+            <button onClick={() => { navigate('#/shipping'); setMobileMenuOpen(false); }}>Shipping & delivery <ChevronRight size={16}/></button>
+            <button onClick={() => { navigate('#/returns'); setMobileMenuOpen(false); }}>Returns & refunds <ChevronRight size={16}/></button>
+            <button onClick={() => { navigate('#/support'); setMobileMenuOpen(false); }}>Customer support <ChevronRight size={16}/></button>
+            <button onClick={() => { navigate('#/dashboard/tracking'); setMobileMenuOpen(false); }}>Track order <ChevronRight size={16}/></button>
+          </div>
+          <div className="header-mobile-drawer-account">
+            {signedIn && currentUser ? (
+              <button onClick={() => { navigate('#/dashboard/overview'); setMobileMenuOpen(false); }}>
+                <strong>Signed in as {currentUser.name || currentUser.email}</strong>
+              </button>
+            ) : (
+              <div className="header-mobile-auth-pair">
+                <button className="auth-btn-signin" onClick={() => { openAuth('login'); setMobileMenuOpen(false); }}>Sign in</button>
+                <button className="auth-btn-signup" onClick={() => { openAuth('signup'); setMobileMenuOpen(false); }}>Sign up</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  )
+}
 function CatalogPrice({product}:{product:CatalogProduct}){const hasDiscount=product.oldPrice>product.price;return <span className="catalog-price"><strong>₦{product.price.toLocaleString('en-NG')}</strong>{hasDiscount&&<><del>₦{product.oldPrice.toLocaleString('en-NG')}</del><small>Sale</small></>}</span>}
 
 function CatalogStock({product}:{product:CatalogProduct}){const inStock=(product.stock_quantity??0)>0;return <span className={`catalog-stock${inStock?'':' sold-out'}`}>{inStock?'In stock':'Sold out'}</span>}
