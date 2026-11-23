@@ -14,6 +14,8 @@ The checked-in SQL is an incremental schema for the existing Piece View Supabase
 
 The order write security migration removes direct customer insert policies for orders and line items. Checkout continues through the `place_customer_order` database function, which calculates prices from the live catalog and reserves stock.
 
+For existing projects that already applied the order tracking notes migration, also apply `supabase/migrations/20261120140000_allow_same_status_tracking_updates.sql`. This allows admins to add customer-visible package location or delivery notes without changing the order status.
+
 Paystack checkout setup, Edge Function deployment, webhook configuration, and secrets are documented in [the function setup guide](supabase/functions/README.md#paystack-checkout).
 
 ## Email setup

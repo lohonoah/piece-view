@@ -188,6 +188,41 @@ export function AdminCatalog({ products, onProductsChange, message, setMessage }
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const deleteProduct = async (product: CatalogProduct) => {
+    if (!supabase || !product.id) return setMessage('This product cannot be deleted.')
+    if (!window.confirm(`Delete "${product.name}" permanently? This cannot be undone.`)) return
+    if (product.imagePath) {
+      await supabase.storage.from('catalog-images').remove([product.imagePath])
+    }
+    const { error } = await supabase.from('catalog_products').delete().eq('id', product.id)
+    if (error) return setMessage(error.message)
+    const refreshError = await refreshProducts()
+    setMessage(refreshError || `"${product.name}" was deleted.`)
+    if (draft.id === product.id) { setDraft(emptyDraft()); setImageFile(null); setImagePreview('') }
+  }
+
+  const duplicateProduct = (product: CatalogProduct) => {
+    setDraft({
+      id: null,
+      name: `${product.name} (copy)`,
+      category: product.category || PRODUCT_CATEGORIES[1],
+      type: product.type,
+      texture: product.texture || '',
+      length: product.length || '',
+      price: String(product.price),
+      oldPrice: product.oldPrice ? String(product.oldPrice) : '',
+      tag: product.tag,
+      stockQuantity: String(product.stock_quantity ?? 0),
+      image: product.image,
+      imagePath: '',
+      active: product.active !== false,
+    })
+    setImageFile(null)
+    setImagePreview('')
+    setMessage('Duplicated — edit the name and save to add.')
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const toggleProduct = async (product: CatalogProduct) => {
     if (!supabase || !product.id) return setMessage('This product cannot be updated.')
     const { error } = await supabase
@@ -235,11 +270,15 @@ export function AdminCatalog({ products, onProductsChange, message, setMessage }
           <strong>{product.name}</strong>
           <span>{product.category || PRODUCT_CATEGORIES[1]}</span>
           <small>{[product.texture, product.length].filter(Boolean).join(' · ') || product.type}</small>
-          <b>{String.fromCharCode(8358)}{product.price.toLocaleString('en-NG')} · {product.stock_quantity ?? 0} in stock</b>
+          <b>{String.fromCharCode(8358)}{product.price.toLocaleString('en-NG')} · {product.stock_quantity ?? 0} in stock
+            {(product.stock_quantity ?? 0) === 0 && <span className="catalog-stock-out-badge"> · Out of stock</span>}
+          </b>
         </div>
         <div className="admin-catalog-card-actions">
           <button type="button" onClick={() => editProduct(product)}>Edit</button>
           <button type="button" className="secondary" onClick={() => toggleProduct(product)}>{product.active === false ? 'Activate' : 'Hide'}</button>
+          <button type="button" className="secondary" title="Duplicate product" onClick={() => duplicateProduct(product)}>Duplicate</button>
+          <button type="button" className="danger" title="Delete product permanently" onClick={() => deleteProduct(product)}>Delete</button>
         </div>
       </article>)}
       {!products.length && <p className="admin-empty">No catalog products yet. Add the first product above.</p>}

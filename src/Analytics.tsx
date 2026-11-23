@@ -74,6 +74,7 @@ function buildAdminAnalytics(orders: AdminAnalyticsOrder[], period: string) {
     periodOrders,
     revenueTotal,
     completedOrderCount: revenueOrders.length,
+    avgOrderValue: revenueOrders.length ? Math.round(revenueTotal / revenueOrders.length) : null,
     repeatCustomerRate: customerOrderCounts.size ? Math.round((repeatCustomers / customerOrderCounts.size) * 100) : null,
     statuses: [...statusCounts].map(([name, value]) => ({ name, value })),
   }
@@ -99,8 +100,10 @@ export function Analytics({ orders, period, setPeriod }: { orders: AdminAnalytic
   const analytics = buildAdminAnalytics(orders, period)
   return <><section className="analytics-toolbar"><div>{['Year', 'Quarter', 'Month'].map(item => <button className={period === item ? 'active' : ''} key={item} onClick={() => setPeriod(item)}>{item}</button>)}</div></section>
     <section className="charts"><RevenueChart data={analytics.points} hasOrders={analytics.completedOrderCount > 0}/><OrdersByStatusChart data={analytics.statuses}/></section>
-    <section className="insight-grid"><article><span>Completed sales this period</span><strong>{String.fromCharCode(8358)}{analytics.revenueTotal.toLocaleString('en-NG')}</strong><p>Completed orders only</p></article>
+    <section className="insight-grid">
+      <article><span>Completed sales this period</span><strong>{String.fromCharCode(8358)}{analytics.revenueTotal.toLocaleString('en-NG')}</strong><p>Completed orders only</p></article>
       <article><span>Orders this period</span><strong>{analytics.periodOrders.length}</strong><p>Current {period.toLowerCase()}</p></article>
+      <article><span>Avg order value</span><strong>{analytics.avgOrderValue === null ? 'N/A' : `${String.fromCharCode(8358)}${analytics.avgOrderValue.toLocaleString('en-NG')}`}</strong><p>Completed orders only</p></article>
       <article><span>Repeat customers</span><strong>{analytics.repeatCustomerRate === null ? 'N/A' : `${analytics.repeatCustomerRate}%`}</strong><p>Customers with more than one order</p></article>
     </section>
   </>

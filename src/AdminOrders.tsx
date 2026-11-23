@@ -60,6 +60,12 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
   const updateStatus = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!selectedOrder || !supabase) return
+    const trackingNote = note.trim()
+    const statusChanged = status !== (orderDetail?.status || selectedOrder.status)
+    if (!statusChanged && !trackingNote) {
+      setError('Change the status or add a tracking update before saving.')
+      return
+    }
     if (orderDetail?.payment_method === 'Paystack' && orderDetail.payment_status !== 'Paid' && status !== 'Cancelled') {
       setError('Do not process this order until Paystack confirms payment. You can cancel it to release the reserved stock.')
       return
@@ -70,11 +76,11 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
     const { error: updateError } = await supabase.rpc('admin_update_customer_order_status_with_note', {
       p_public_id: selectedOrder.public_id || String(selectedOrder.id),
       p_status: status,
-      p_note: note.trim(),
+      p_note: trackingNote,
     })
     if (updateError) { setError(updateError.message); setSaving(false); return }
     setOrders(previous => previous.map(row => row.id === selectedOrder.id ? { ...row, status } : row))
-    setMessage('Order status updated')
+    setMessage(statusChanged ? 'Order status updated' : 'Customer tracking update saved')
     setNote('')
     const { data: stockRows, error: stockError } = await supabase.from('catalog_products').select('*').order('created_at', { ascending: false })
     if (stockError) setError(`Status saved, but inventory refresh failed: ${stockError.message}`)
@@ -90,10 +96,10 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
   const statusForm = selectedOrder && <form className="admin-order-update" onSubmit={updateStatus}>
     <h3>Update fulfillment</h3>
     <label>Status<select value={status} onChange={event => setStatus(event.target.value)}>{statuses.map(item => <option key={item}>{item}</option>)}</select></label>
-    <label>Customer tracking note <span>Optional · {note.length}/500</span>
-      <textarea maxLength={500} value={note} onChange={event => setNote(event.target.value)} placeholder="Add a delivery update or helpful detail" />
+    <label>Customer tracking update <span>Optional · {note.length}/500</span>
+      <textarea maxLength={500} value={note} onChange={event => setNote(event.target.value)} placeholder="Add a location or delivery update, e.g. Arrived at Lagos sorting hub" />
     </label>
-    <button disabled={saving || status === (orderDetail?.status || selectedOrder.status)}>{saving ? 'Saving update…' : 'Save status update'}</button>
+    <button disabled={saving || (status === (orderDetail?.status || selectedOrder.status) && !note.trim())}>{saving ? 'Saving update…' : 'Save tracking update'}</button>
   </form>
 
   return <section className="admin-orders-workspace">

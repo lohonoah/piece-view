@@ -15,15 +15,16 @@ type CheckoutProps = {
   setNotice: (message: string) => void
   catalogProducts: CatalogProduct[]
   catalogLoading: boolean
+  currentUser?: { name: string; email: string } | null
 }
 
-export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, signedIn, openAuth, setCart, setNotice, catalogProducts, catalogLoading }: CheckoutProps) {
+export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, signedIn, openAuth, setCart, setNotice, catalogProducts, catalogLoading, currentUser }: CheckoutProps) {
   const unavailableCartItems = catalogLoading ? [] : cart.filter(item => {
     const product = catalogProducts.find(row => row.active !== false && row.name === item.name)
     return !product || (item.quantity || 1) > Math.min(product.stock_quantity ?? 0, 20)
   })
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(currentUser?.name || '')
+  const [email, setEmail] = useState(currentUser?.email || '')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [payment, setPayment] = useState('Pay on delivery')
@@ -89,25 +90,35 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     <fieldset><legend>Payment method</legend>
       <label><input type="radio" name="payment" checked={payment === 'Pay on delivery'} onChange={() => setPayment('Pay on delivery')} /> Pay on delivery</label>
       <label><input type="radio" name="payment" checked={payment === 'Paystack'} onChange={() => setPayment('Paystack')} /> Pay securely with Paystack</label>
-      {payment === 'Paystack' && <p className="checkout-payment-hint">You’ll be redirected to Paystack to pay by card or another available method.</p>}
+      {payment === 'Paystack' && <p className="checkout-payment-hint">You'll be redirected to Paystack to pay by card or another available method.</p>}
     </fieldset>
     <button type="submit" disabled={!cart.length || submitting || catalogLoading || unavailableCartItems.length > 0}>{submitting ? (payment === 'Paystack' ? 'Starting secure payment…' : 'Placing order…') : payment === 'Paystack' ? 'Continue to payment' : 'Place order'}</button>
-  </form><aside className="cart-summary"><h2>Payment summary</h2><div><span>Subtotal · {cart.length} items</span><strong>₦{cartTotal.toLocaleString('en-NG')}</strong></div><div><span>Delivery</span><strong>₦2,500</strong></div><div><span>Total</span><strong>₦{(cartTotal + 2500).toLocaleString('en-NG')}</strong></div></aside></section>
+  </form><aside className="cart-summary"><h2>Payment summary</h2><div><span>Subtotal · {cart.length} items</span><strong>₦{cartTotal.toLocaleString('en-NG')}</strong></div><div><span>Delivery <small className="checkout-delivery-note">(estimated)</small></span><strong>₦2,500</strong></div><div><span>Total</span><strong>₦{(cartTotal + 2500).toLocaleString('en-NG')}</strong></div></aside></section>
+}
+
+function getPaymentReference(route: string) {
+  const query = route.split('?')[1] || window.location.search.slice(1)
+  const params = new URLSearchParams(query)
+  const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '')
+  return params.get('reference') || params.get('trxref') || hashParams.get('reference') || hashParams.get('trxref')
 }
 
 export function PaymentReturnPage({ route, setCart }: { route: string; setCart: (items: any[]) => void }) {
-  const [state, setState] = useState<'checking' | 'paid' | 'failed' | 'error'>('checking')
-  const [message, setMessage] = useState('Confirming your payment with Paystack…')
+  const reference = getPaymentReference(route)
+  const [state, setState] = useState<'checking' | 'paid' | 'failed' | 'error'>(
+    !reference ? 'failed' : !supabase ? 'error' : 'checking'
+  )
+  const [message, setMessage] = useState(
+    !reference
+      ? 'No payment reference was returned. Your cart has been kept safe.'
+      : !supabase
+        ? 'Payment verification is unavailable. Please contact support before retrying.'
+        : 'Confirming your payment with Paystack…'
+  )
   const ran = useRef(false)
   useEffect(() => {
-    if (ran.current) return
+    if (!reference || !supabase || ran.current) return
     ran.current = true
-    const query = route.split('?')[1] || window.location.search.slice(1)
-    const params = new URLSearchParams(query)
-    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '')
-    const reference = params.get('reference') || params.get('trxref') || hashParams.get('reference') || hashParams.get('trxref')
-    if (!reference) { setState('failed'); setMessage('No payment reference was returned. Your cart has been kept safe.'); return }
-    if (!supabase) { setState('error'); setMessage('Payment verification is unavailable. Please contact support before retrying.'); return }
     supabase.functions.invoke('paystack-verify', { body: { reference } }).then(({ data, error }) => {
       if (error || !data) { setState('error'); setMessage(data?.error || error?.message || 'We could not verify this payment yet. Please retry shortly.'); return }
       if (data.paid) {
@@ -115,6 +126,6 @@ export function PaymentReturnPage({ route, setCart }: { route: string; setCart: 
         setCart([]); localStorage.setItem('pieceview_cart', '[]')
       } else { setState('failed'); setMessage('Paystack did not confirm payment. Your cart is still available to retry.') }
     }).catch(() => { setState('error'); setMessage('We could not verify this payment yet. Please retry shortly.') })
-  }, [route, setCart])
+  }, [reference, setCart])
   return <section className="payment-return-page" aria-live="polite"><p className="landing-eyebrow">PAYSTACK CHECKOUT</p><h1>{state === 'checking' ? 'Confirming payment' : state === 'paid' ? 'Payment received' : state === 'failed' ? 'Payment not completed' : 'We’re checking your payment'}</h1><p>{message}</p>{state !== 'checking' && <div><button onClick={() => { window.location.hash = state === 'paid' ? '#/dashboard/orders' : '#/cart' }}>{state === 'paid' ? 'View my orders' : 'Return to cart'}</button>{state === 'error' && <button className="payment-retry" onClick={() => { ran.current = false; setState('checking'); setMessage('Confirming your payment with Paystack…'); window.location.reload() }}>Retry verification</button>}</div>}</section>
 }
