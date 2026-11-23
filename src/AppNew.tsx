@@ -539,7 +539,9 @@ function MovableCartBag({ cartCount }: { cartCount: number }) {
     try {
       const saved = localStorage.getItem('pieceview_cart_bag_pos')
       if (saved) return JSON.parse(saved)
-    } catch {}
+    } catch {
+      localStorage.removeItem('pieceview_cart_bag_pos')
+    }
     return null
   })
   const isDragging = useRef(false)

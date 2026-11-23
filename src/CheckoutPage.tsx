@@ -2,10 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { supabase } from './lib/supabase'
 import type { CatalogProduct } from './catalog'
+import { bankTransferConfig, bankTransferIsConfigured } from './lib/paymentConfig'
+import type { PaymentMethod } from './types'
+import type { CartItem } from './types'
+import { getUnavailableCartItems } from './commerce'
 import './CheckoutPage.css'
 
+const paystackEnabled = import.meta.env.VITE_PAYSTACK_ENABLED === 'true'
+
 type CheckoutProps = {
-  cart: any[]
+  cart: CartItem[]
   cartTotal: number
   setOrders: (items: any[]) => void
   setNotifications: (updater: any) => void
@@ -19,20 +25,21 @@ type CheckoutProps = {
 }
 
 export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, signedIn, openAuth, setCart, setNotice, catalogProducts, catalogLoading, currentUser }: CheckoutProps) {
-  const unavailableCartItems = catalogLoading ? [] : cart.filter(item => {
-    const product = catalogProducts.find(row => row.active !== false && row.name === item.name)
-    return !product || (item.quantity || 1) > Math.min(product.stock_quantity ?? 0, 20)
-  })
+  const unavailableCartItems = catalogLoading
+    ? []
+    : getUnavailableCartItems(cart, catalogProducts)
   const [name, setName] = useState(currentUser?.name || '')
   const [email, setEmail] = useState(currentUser?.email || '')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
-  const [payment, setPayment] = useState<'Pay on delivery' | 'Bank Transfer' | 'Paystack'>('Bank Transfer')
+  const [payment, setPayment] = useState<PaymentMethod>(bankTransferIsConfigured ? 'Bank Transfer' : 'Pay on delivery')
   const [senderName, setSenderName] = useState('')
   const [senderBank, setSenderBank] = useState('')
   const [transferRef, setTransferRef] = useState('')
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [copied, setCopied] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const clientOrderToken = useRef(crypto.randomUUID())
 
   const copyAccountNumber = (acc: string) => {
     navigator.clipboard?.writeText(acc).then(() => {
@@ -45,32 +52,61 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     event.preventDefault()
     if (!name.trim() || !email.trim() || !address.trim() || !phone.trim()) return setNotice('Complete all delivery details')
     if (payment === 'Bank Transfer' && !senderName.trim()) return setNotice('Enter the sender account name for your bank transfer')
+    if (payment === 'Bank Transfer' && !bankTransferIsConfigured) return setNotice('Bank Transfer is temporarily unavailable. Choose another payment method.')
+    if (payment === 'Paystack' && !paystackEnabled) return setNotice('Paystack checkout is temporarily unavailable.')
+    if (receiptFile && !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(receiptFile.type)) return setNotice('Receipt must be a JPG, PNG, WebP, or PDF file.')
+    if (receiptFile && receiptFile.size > 5 * 1024 * 1024) return setNotice('Receipt must be 5 MB or smaller.')
     if (!supabase) return setNotice('Checkout is unavailable')
     if (catalogLoading) return setNotice('Please wait while we verify current stock')
     if (unavailableCartItems.length) return setNotice('Some cart items are unavailable or exceed current stock. Update your cart before checkout.')
     setSubmitting(true)
 
-    let paymentMethodForRpc = payment
-    let rpcResult = await supabase.rpc('place_customer_order', {
+    const rpcResult = await supabase.rpc('place_customer_order', {
       p_customer_name: name.trim(), p_customer_email: email.trim(), p_phone: phone.trim(),
-      p_shipping_address: address.trim(), p_payment_method: paymentMethodForRpc,
+      p_shipping_address: address.trim(), p_payment_method: payment,
       p_items: cart.map(item => ({ name: item.name, quantity: item.quantity || 1 })),
+      p_transfer_details: payment === 'Bank Transfer' ? {
+        senderName: senderName.trim(),
+        senderBank: senderBank.trim(),
+        transactionReference: transferRef.trim(),
+      } : null,
+      p_client_order_token: clientOrderToken.current,
     })
-
-    // Graceful fallback if database migration for Bank Transfer hasn't been executed yet
-    if (rpcResult.error && rpcResult.error.message.includes('Unsupported payment method')) {
-      paymentMethodForRpc = 'Pay on delivery'
-      rpcResult = await supabase.rpc('place_customer_order', {
-        p_customer_name: name.trim(), p_customer_email: email.trim(), p_phone: phone.trim(),
-        p_shipping_address: address.trim(), p_payment_method: 'Pay on delivery',
-        p_items: cart.map(item => ({ name: item.name, quantity: item.quantity || 1 })),
-      })
-    }
 
     if (rpcResult.error) { setSubmitting(false); return setNotice(rpcResult.error.message) }
     const created = rpcResult.data?.[0]
     if (!created) { setSubmitting(false); return setNotice('The order could not be confirmed') }
     const publicId = created.order_id
+
+    if (payment === 'Bank Transfer' && receiptFile) {
+      const { data: authData } = await supabase.auth.getUser()
+      const userId = authData.user?.id
+      if (userId) {
+        const extension = receiptFile.type === 'application/pdf'
+          ? 'pdf'
+          : receiptFile.type === 'image/png' ? 'png' : receiptFile.type === 'image/webp' ? 'webp' : 'jpg'
+        const receiptPath = `${userId}/${clientOrderToken.current}/receipt.${extension}`
+        const { error: uploadError } = await supabase.storage
+          .from('bank-transfer-receipts')
+          .upload(receiptPath, receiptFile, {
+            cacheControl: '3600',
+            contentType: receiptFile.type,
+            upsert: true,
+          })
+        if (uploadError) {
+          setSubmitting(false)
+          return setNotice(`Order ${publicId} was created, but its receipt could not be uploaded: ${uploadError.message}`)
+        }
+        const { error: attachError } = await supabase.rpc('attach_bank_transfer_receipt', {
+          p_public_id: publicId,
+          p_receipt_path: receiptPath,
+        })
+        if (attachError) {
+          setSubmitting(false)
+          return setNotice(`Order ${publicId} was created, but receipt attachment failed: ${attachError.message}`)
+        }
+      }
+    }
 
     if (payment === 'Paystack') {
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('paystack-initialize', { body: { orderId: publicId } })
@@ -87,8 +123,6 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
       return currentProduct ? { ...currentProduct, quantity: item.quantity || 1 } : item
     })
     const paymentStatus = payment === 'Bank Transfer' ? 'Awaiting confirmation' : 'Not required'
-    const transferNote = payment === 'Bank Transfer' ? `Transfer from: ${senderName.trim()} (${senderBank.trim() || 'Bank'})${transferRef ? ` · Ref: ${transferRef.trim()}` : ''}` : ''
-
     const order = {
       id: publicId,
       name,
@@ -97,7 +131,11 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
       phone,
       payment,
       paymentStatus,
-      transferDetails: transferNote || undefined,
+      transferDetails: payment === 'Bank Transfer' ? {
+        senderName: senderName.trim(),
+        senderBank: senderBank.trim(),
+        transactionReference: transferRef.trim(),
+      } : undefined,
       total: Number(created.total),
       status: 'Pending',
       items: orderItems,
@@ -107,16 +145,6 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     const nextOrders = [order, ...existing]
     localStorage.setItem('pieceview_orders', JSON.stringify(nextOrders))
     setOrders(nextOrders)
-
-    if (transferNote && supabase) {
-      try {
-        await supabase.from('customer_order_status_history').insert({
-          order_id: created.id || publicId,
-          status: 'Pending',
-          note: `Customer noted: ${transferNote}`
-        })
-      } catch {}
-    }
 
     const orderEvent = {
       id: `order-${Date.now()}`,
@@ -148,14 +176,15 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     <label>Phone number<input value={phone} onChange={event => setPhone(event.target.value)} placeholder="+234" autoComplete="tel" /></label>
     <label>Delivery address<textarea value={address} onChange={event => setAddress(event.target.value)} placeholder="Street, city, state" autoComplete="street-address" /></label>
     <fieldset><legend>Payment method</legend>
-      <label><input type="radio" name="payment" checked={payment === 'Bank Transfer'} onChange={() => setPayment('Bank Transfer')} /> <strong>Direct Bank Transfer</strong> <small className="payment-badge-pill">Recommended</small></label>
+      <label><input type="radio" name="payment" checked={payment === 'Bank Transfer'} disabled={!bankTransferIsConfigured} onChange={() => setPayment('Bank Transfer')} /> <strong>Direct Bank Transfer</strong> <small className="payment-badge-pill">{bankTransferIsConfigured ? 'Recommended' : 'Unavailable'}</small></label>
       
       {payment === 'Bank Transfer' && <div className="bank-transfer-box">
+        {!bankTransferIsConfigured && <p className="cart-stock-warning" role="alert">Bank Transfer is temporarily unavailable because verified account details have not been configured.</p>}
         <p className="transfer-instructions">Transfer the exact total to our verified store account below, then enter your sender name to confirm your order.</p>
         <div className="bank-account-card">
-          <div className="bank-row"><span>Bank Name</span><strong>Guaranty Trust Bank (GTBank)</strong></div>
-          <div className="bank-row"><span>Account Number</span><div className="acct-number-copy"><strong className="number-display">0123456789</strong><button type="button" className="copy-acct-btn" onClick={() => copyAccountNumber('0123456789')}>{copied ? '✓ Copied' : 'Copy number'}</button></div></div>
-          <div className="bank-row"><span>Account Name</span><strong>PIECE VIEW CONCIERGE</strong></div>
+          <div className="bank-row"><span>Bank Name</span><strong>{bankTransferConfig.bankName}</strong></div>
+          <div className="bank-row"><span>Account Number</span><div className="acct-number-copy"><strong className="number-display">{bankTransferConfig.accountNumber}</strong><button type="button" className="copy-acct-btn" onClick={() => copyAccountNumber(bankTransferConfig.accountNumber)}>{copied ? '✓ Copied' : 'Copy number'}</button></div></div>
+          <div className="bank-row"><span>Account Name</span><strong>{bankTransferConfig.accountName}</strong></div>
           <div className="bank-row"><span>Amount Due</span><strong className="amount-highlight">₦{(cartTotal + 2500).toLocaleString('en-NG')}</strong></div>
         </div>
         <div className="transfer-inputs">
@@ -168,13 +197,16 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
           <label>Transaction reference or note <span>(optional)</span>
             <input value={transferRef} onChange={e => setTransferRef(e.target.value)} placeholder="e.g. Session ID or receipt reference" />
           </label>
+          <label>Payment receipt <span>(optional)</span>
+            <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" onChange={event => setReceiptFile(event.target.files?.[0] || null)} />
+          </label>
         </div>
       </div>}
 
       <label><input type="radio" name="payment" checked={payment === 'Pay on delivery'} onChange={() => setPayment('Pay on delivery')} /> Pay on delivery</label>
       {payment === 'Pay on delivery' && <p className="checkout-payment-hint">Pay in cash or transfer when your package arrives at your doorstep in Lagos.</p>}
 
-      <label><input type="radio" name="payment" checked={payment === 'Paystack'} onChange={() => setPayment('Paystack')} /> Pay securely with Paystack</label>
+      <label><input type="radio" name="payment" checked={payment === 'Paystack'} disabled={!paystackEnabled} onChange={() => setPayment('Paystack')} /> Pay securely with Paystack {!paystackEnabled && <small>(temporarily unavailable)</small>}</label>
       {payment === 'Paystack' && <p className="checkout-payment-hint">You'll be redirected to Paystack to pay by card, USSD, or online bank transfer.</p>}
     </fieldset>
     <button type="submit" disabled={!cart.length || submitting || catalogLoading || unavailableCartItems.length > 0}>{submitting ? (payment === 'Paystack' ? 'Starting secure payment…' : 'Confirming order…') : payment === 'Paystack' ? 'Continue to payment' : payment === 'Bank Transfer' ? 'I Have Made This Transfer' : 'Place order'}</button>

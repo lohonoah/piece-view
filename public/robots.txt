@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://piece-view.vercel.app/sitemap.xml

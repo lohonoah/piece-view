@@ -34,6 +34,7 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [receiptUrl, setReceiptUrl] = useState('')
 
   const loadOrder = async (order: AdminOrder) => {
     setSelectedOrder(order)
@@ -49,6 +50,14 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
     if (detailError) { setError(detailError.message); setLoading(false); return }
     setOrderDetail(data)
     if (data) {
+      setReceiptUrl('')
+      if (data.bank_transfer_receipt_path && supabase) {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from('bank-transfer-receipts')
+          .createSignedUrl(data.bank_transfer_receipt_path, 3600)
+        if (signedError) setError(signedError.message)
+        else setReceiptUrl(signed?.signedUrl || '')
+      }
       const { data: history, error: historyError } = await supabase.from('customer_order_status_history')
         .select('status,note,created_at').eq('order_id', data.id).order('created_at', { ascending: true })
       if (historyError) setError(historyError.message)
@@ -100,23 +109,9 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
     })
 
     if (rpcError) {
-      // Fallback direct update in case SQL migration hasn't been executed
-      await supabase.from('customer_orders')
-        .update({ payment_status: 'Paid', status: 'Processing' })
-        .eq('public_id', publicId)
-      await supabase.from('admin_orders')
-        .update({ status: 'Processing' })
-        .eq('public_id', publicId)
-      if (orderDetail?.id) {
-        try {
-          await supabase.from('customer_order_status_history')
-            .insert({
-              order_id: orderDetail.id,
-              status: 'Processing',
-              note: 'Bank transfer verified and confirmed by administrator.'
-            })
-        } catch {}
-      }
+      setError(rpcError.message)
+      setSaving(false)
+      return
     }
 
     setOrders(previous => previous.map(row => (row.id === selectedOrder.id || row.public_id === publicId) ? { ...row, status: 'Processing' } : row))
@@ -162,6 +157,14 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
             <div>
               <span>Payment</span>
               <strong>{orderDetail.payment_method}{orderDetail.payment_status ? ` · ${orderDetail.payment_status}` : ''}</strong>
+              {orderDetail.payment_method === 'Bank Transfer' && (
+                <>
+                  <small>Sender: {orderDetail.bank_transfer_sender_name || 'Not provided'}{orderDetail.bank_transfer_sender_bank ? ` · ${orderDetail.bank_transfer_sender_bank}` : ''}</small>
+                  {orderDetail.bank_transfer_reference && <small>Reference: {orderDetail.bank_transfer_reference}</small>}
+                  {orderDetail.bank_transfer_verified_at && <small>Verified: {new Date(orderDetail.bank_transfer_verified_at).toLocaleString()}</small>}
+                  {receiptUrl && <a href={receiptUrl} target="_blank" rel="noreferrer">View transfer receipt</a>}
+                </>
+              )}
               {orderDetail.payment_method === 'Bank Transfer' && orderDetail.payment_status !== 'Paid' && (
                 <button
                   type="button"
