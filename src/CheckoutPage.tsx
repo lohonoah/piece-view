@@ -5,7 +5,7 @@ import type { CatalogProduct } from './catalog'
 import { bankTransferConfig, bankTransferIsConfigured } from './lib/paymentConfig'
 import type { PaymentMethod } from './types'
 import type { CartItem } from './types'
-import { getUnavailableCartItems } from './commerce'
+import { clearCheckoutAttemptToken, createCheckoutFingerprint, getCheckoutAttemptToken, getUnavailableCartItems } from './commerce'
 import './CheckoutPage.css'
 
 const paystackEnabled = import.meta.env.VITE_PAYSTACK_ENABLED === 'true'
@@ -39,7 +39,6 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [copied, setCopied] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const clientOrderToken = useRef(crypto.randomUUID())
 
   const copyAccountNumber = (acc: string) => {
     navigator.clipboard?.writeText(acc).then(() => {
@@ -59,6 +58,28 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     if (!supabase) return setNotice('Checkout is unavailable')
     if (catalogLoading) return setNotice('Please wait while we verify current stock')
     if (unavailableCartItems.length) return setNotice('Some cart items are unavailable or exceed current stock. Update your cart before checkout.')
+
+    let clientOrderToken: string
+    try {
+      const fingerprint = await createCheckoutFingerprint({
+        customerName: name,
+        customerEmail: email,
+        phone,
+        shippingAddress: address,
+        paymentMethod: payment,
+        items: cart.map(item => ({ name: item.name, quantity: item.quantity || 1 })),
+        transferDetails: payment === 'Bank Transfer' ? {
+          senderName,
+          senderBank,
+          transactionReference: transferRef,
+        } : null,
+      })
+      clientOrderToken = getCheckoutAttemptToken(sessionStorage, fingerprint)
+    } catch (attemptError) {
+      const message = attemptError instanceof Error ? attemptError.message : 'Unknown storage error'
+      return setNotice(`Could not safely prepare checkout: ${message}`)
+    }
+
     setSubmitting(true)
 
     const rpcResult = await supabase.rpc('place_customer_order', {
@@ -70,7 +91,7 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
         senderBank: senderBank.trim(),
         transactionReference: transferRef.trim(),
       } : null,
-      p_client_order_token: clientOrderToken.current,
+      p_client_order_token: clientOrderToken,
     })
 
     if (rpcResult.error) { setSubmitting(false); return setNotice(rpcResult.error.message) }
@@ -85,7 +106,7 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
         const extension = receiptFile.type === 'application/pdf'
           ? 'pdf'
           : receiptFile.type === 'image/png' ? 'png' : receiptFile.type === 'image/webp' ? 'webp' : 'jpg'
-        const receiptPath = `${userId}/${clientOrderToken.current}/receipt.${extension}`
+        const receiptPath = `${userId}/${clientOrderToken}/receipt.${extension}`
         const { error: uploadError } = await supabase.storage
           .from('bank-transfer-receipts')
           .upload(receiptPath, receiptFile, {
@@ -114,6 +135,7 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
         setSubmitting(false)
         return setNotice(paymentData?.error || paymentError?.message || 'Could not start online payment. Your cart is still saved.')
       }
+      clearCheckoutAttemptToken(sessionStorage, clientOrderToken)
       window.location.assign(paymentData.authorization_url)
       return
     }
@@ -162,6 +184,7 @@ export function CheckoutPage({ cart, cartTotal, setOrders, setNotifications, sig
     })
     setCart([])
     localStorage.setItem('pieceview_cart', '[]')
+    clearCheckoutAttemptToken(sessionStorage, clientOrderToken)
     setNotice(payment === 'Bank Transfer' ? `Order ${publicId} received! We will verify your transfer and notify you.` : `Order ${publicId} placed successfully`)
     window.location.hash = '#/dashboard/orders'
   }
