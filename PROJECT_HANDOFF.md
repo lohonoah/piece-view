@@ -22,13 +22,16 @@ This file records the recent project decisions and shipped work so the next sess
 - Added support for guest order tracking in `TrackingPage` without requiring a pre-existing local session record.
 - Fixed React effect lint warnings in `TrackingPage` and `CheckoutPage` flagged by Oxlint, achieving 0 warnings and 0 errors across 18 files.
 - Optimized customer cart and wishlist database sync in `AppNew.tsx` with a 400ms debounce to prevent database write storms on rapid quantity clicks.
+- Fixed mobile header overlapping issue: eliminated conflicting multi-line flex wrapping and height overflow rules across `AppNew.css`, `CustomerDesign.css`, and `CustomerStoreHeader.css`.
+- Ensured all header items (Brand, Account, Wishlist, Cart bag, and Navigation) fit cleanly on mobile with a sticky top bar, a swipeable horizontal sub-nav strip, and an expandable dropdown drawer.
+- Implemented a movable, draggable floating cart bag widget (`MovableCartBag`) with touch/drag support that saves its position in `localStorage` and navigates to `#/cart`.
 - Ignored CLI cache directory `supabase/.temp/` in `.gitignore`.
 - Production build completed cleanly with `tsc -b && vite build`.
 
 ## Latest publish
 
 - Git branch: `master`
-- Latest commit: `f7079af` (`Fix responsive signup and customer session UI`)
+- Latest commit: `c8c77de` (`Fix mobile header overlapping and add movable shopping bag icon`)
 - GitHub branch was pushed and confirmed clean after push.
 - Vercel production deployment is Ready at <https://piece-view.vercel.app>.
 - Deployment inspection URL: <https://vercel.com/lohonoahs-projects/piece-view/3G3CugLxi5XvqBwoFEgty9HuiVTE>
