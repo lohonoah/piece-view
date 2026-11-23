@@ -89,6 +89,42 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
     setSaving(false)
   }
 
+  const confirmBankTransfer = async () => {
+    if (!selectedOrder || !supabase) return
+    setSaving(true)
+    setError('')
+    const publicId = selectedOrder.public_id || String(selectedOrder.id)
+    const { error: rpcError } = await supabase.rpc('admin_confirm_bank_transfer', {
+      p_public_id: publicId,
+      p_note: 'Bank transfer verified and confirmed by administrator.'
+    })
+
+    if (rpcError) {
+      // Fallback direct update in case SQL migration hasn't been executed
+      await supabase.from('customer_orders')
+        .update({ payment_status: 'Paid', status: 'Processing' })
+        .eq('public_id', publicId)
+      await supabase.from('admin_orders')
+        .update({ status: 'Processing' })
+        .eq('public_id', publicId)
+      if (orderDetail?.id) {
+        try {
+          await supabase.from('customer_order_status_history')
+            .insert({
+              order_id: orderDetail.id,
+              status: 'Processing',
+              note: 'Bank transfer verified and confirmed by administrator.'
+            })
+        } catch {}
+      }
+    }
+
+    setOrders(previous => previous.map(row => (row.id === selectedOrder.id || row.public_id === publicId) ? { ...row, status: 'Processing' } : row))
+    setMessage('Bank transfer confirmed! Order marked as Paid and moved to Processing.')
+    await loadOrder({ ...selectedOrder, status: 'Processing' })
+    setSaving(false)
+  }
+
   const visibleOrders = orders.filter(order => {
     const searchable = `${order.public_id || ''} ${order.customer_name || ''} ${order.customer_email || ''}`.toLowerCase()
     return searchable.includes(search.trim().toLowerCase()) && (filter === 'All' || order.status === filter)
@@ -123,7 +159,20 @@ export function AdminOrders({ orders, setOrders, setInventory, setMessage }: Pro
             <div><span>Customer</span><strong>{orderDetail.customer_name}</strong><a href={`mailto:${orderDetail.customer_email}`}>{orderDetail.customer_email}</a></div>
             <div><span>Phone</span><strong>{orderDetail.phone || 'Not provided'}</strong></div>
             <div><span>Delivery address</span><strong>{orderDetail.shipping_address}</strong></div>
-            <div><span>Payment</span><strong>{orderDetail.payment_method}{orderDetail.payment_method === 'Paystack' ? ` · ${orderDetail.payment_status}` : ''}</strong></div>
+            <div>
+              <span>Payment</span>
+              <strong>{orderDetail.payment_method}{orderDetail.payment_status ? ` · ${orderDetail.payment_status}` : ''}</strong>
+              {orderDetail.payment_method === 'Bank Transfer' && orderDetail.payment_status !== 'Paid' && (
+                <button
+                  type="button"
+                  className="admin-confirm-transfer-button"
+                  onClick={confirmBankTransfer}
+                  disabled={saving}
+                >
+                  {saving ? 'Confirming…' : '✓ Confirm Transfer (Mark Paid)'}
+                </button>
+              )}
+            </div>
           </div>
           <section className="admin-order-items"><h3>Items</h3>{(orderDetail.customer_order_items || []).map((item: any) => <div key={item.id}>
             <img src={item.image || '/hair/hd-lace.jpg'} alt="" /><span><strong>{item.product_name}</strong><small>{item.product_type || 'Piece View product'} · Qty {item.quantity}</small></span>

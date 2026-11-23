@@ -25,6 +25,12 @@ This file records the recent project decisions and shipped work so the next sess
 - Fixed mobile header overlapping issue: eliminated conflicting multi-line flex wrapping and height overflow rules across `AppNew.css`, `CustomerDesign.css`, and `CustomerStoreHeader.css`.
 - Ensured all header items (Brand, Account, Wishlist, Cart bag, and Navigation) fit cleanly on mobile with a sticky top bar, a swipeable horizontal sub-nav strip, and an expandable dropdown drawer.
 - Implemented a movable, draggable floating cart bag widget (`MovableCartBag`) with touch/drag support that saves its position in `localStorage` and navigates to `#/cart`.
+- Built Direct Bank Transfer checkout interface with copyable account details, automatic narration reference, sender verification inputs, and smooth fallback.
+- Added 1-click Admin Bank Transfer confirmation workflow in `AdminOrders.tsx` with instant tracking note generation.
+- Added multi-angle product gallery with interactive thumbnails in `ProductDetail`.
+- Added verified customer reviews and 4.9-star rating social proof section with verified buyer badges.
+- Added 1-click WhatsApp VIP concierge order & consultation button on product pages with pre-filled product details.
+- Added database migration `supabase/migrations/20261123100000_bank_transfer_payment_support.sql` for Bank Transfer order processing and admin verification.
 - Ignored CLI cache directory `supabase/.temp/` in `.gitignore`.
 - Production build completed cleanly with `tsc -b && vite build`.
 

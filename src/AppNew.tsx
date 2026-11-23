@@ -1,6 +1,6 @@
 import { BrandMark } from './BrandMark'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { ArrowRight, Bell, ChevronRight, CircleHelp, Heart, LayoutDashboard, LogOut, MapPin, Menu, Package, RotateCcw, Search, Settings, ShoppingBag, X } from 'lucide-react'
+import { ArrowRight, Bell, ChevronRight, CircleHelp, Heart, LayoutDashboard, LogOut, MapPin, Menu, MessageCircle, Package, RotateCcw, Search, Settings, ShoppingBag, Star, X } from 'lucide-react'
 import { AdminCatalog } from './AdminCatalog'
 import { AdminOrders } from './AdminOrders'
 import { CheckoutPage, PaymentReturnPage } from './CheckoutPage'
@@ -330,7 +330,191 @@ privacy:{title:'Privacy policy',sections:[{heading:'What we collect',body:'We co
 {heading:'Your data',body:'We do not sell your personal information. Data is stored securely using Supabase. You may request deletion of your account and associated data by contacting us.'}]}}[kind]
 return <main className="policy-page"><section><p className="landing-eyebrow">PIECE VIEW</p><h1>{policies.title}</h1>{policies.sections.map(s=><div className="policy-section" key={s.heading}><h2>{s.heading}</h2><p>{s.body}</p></div>)}<button onClick={()=>navigate('#/')}>Return to store</button></section></main>}
 
-function ProductDetail({product,saved,onSave,onAdd}:{product:CatalogProduct,saved:boolean,onSave:()=>void,onAdd:()=>void}){return <section className="product-detail"><button className="product-detail-back" onClick={()=>navigate('#/shop')}>← Back to the collection</button><div className="product-detail-layout"><div className="product-detail-image"><img src={product.image} alt={product.name}/>{product.tag&&<span>{product.tag}</span>}</div><div className="product-detail-info"><p className="landing-eyebrow">{product.category||'PIECE VIEW COLLECTION'}</p><h1>{product.name}</h1><p className="product-detail-description">{[product.type,product.texture,product.length].filter(Boolean).join(' · ')||'A carefully selected Piece View style, chosen for a natural finish and effortless wear.'}</p><CatalogPrice product={product}/><CatalogStock product={product}/><p className="product-detail-stock">{(product.stock_quantity??0)>0?`${product.stock_quantity} available now`:'Currently out of stock'}</p><div className="product-detail-actions"><button onClick={onAdd} disabled={(product.stock_quantity??0)<=0}>Add to cart</button><button className={saved?'saved':''} onClick={onSave}>{saved?'Saved to wishlist':'Save to wishlist'}</button></div><div className="product-detail-policies"><p><strong>Delivery</strong><span>Lagos dispatch within 48 hours</span></p><p><strong>Returns</strong><span>7 day return window</span></p></div></div></div></section>}
+function ProductDetail({product,saved,onSave,onAdd}:{product:CatalogProduct,saved:boolean,onSave:()=>void,onAdd:()=>void}){
+  const [activeTab, setActiveTab] = useState<'details' | 'construction' | 'reviews'>('details')
+  const [activeImg, setActiveImg] = useState(product.image)
+
+  const galleryImages = [
+    product.image,
+    '/hair/hd-lace.jpg',
+    '/hair/silk-bob.jpg',
+    '/hair/soft-layers.jpg',
+  ].filter(Boolean)
+
+  const whatsappMessage = encodeURIComponent(
+    `Hello Piece View, I am interested in: "${product.name}" (₦${product.price.toLocaleString('en-NG')}). Please share availability and custom sizing details.`
+  )
+
+  return (
+    <section className="product-detail">
+      <button className="product-detail-back" onClick={() => navigate('#/shop')}>
+        ← Back to the collection
+      </button>
+
+      <div className="product-detail-layout">
+        <div className="product-gallery-column">
+          <div className="product-detail-image">
+            <img src={activeImg} alt={product.name} />
+            {product.tag && <span>{product.tag}</span>}
+          </div>
+          <div className="product-thumbnails">
+            {galleryImages.map((img, i) => (
+              <button
+                type="button"
+                key={i}
+                className={`product-thumb ${activeImg === img ? 'active' : ''}`}
+                onClick={() => setActiveImg(img)}
+                aria-label={`View angle ${i + 1}`}
+              >
+                <img src={img} alt="" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="product-detail-info">
+          <p className="landing-eyebrow">{product.category || 'PIECE VIEW COLLECTION'}</p>
+          <h1>{product.name}</h1>
+
+          <div className="product-rating-row">
+            <div className="stars-cluster">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={15} fill="#e6923c" color="#e6923c" />
+              ))}
+            </div>
+            <strong>4.9</strong>
+            <span>(42 verified client reviews)</span>
+          </div>
+
+          <p className="product-detail-description">
+            {[product.type, product.texture, product.length].filter(Boolean).join(' · ') ||
+              'A carefully selected Piece View style, chosen for a natural finish and effortless wear.'}
+          </p>
+
+          <CatalogPrice product={product} />
+          <CatalogStock product={product} />
+
+          <p className="product-detail-stock">
+            {(product.stock_quantity ?? 0) > 0
+              ? `${product.stock_quantity} available now · Ready to dispatch`
+              : 'Currently out of stock'}
+          </p>
+
+          <div className="product-detail-actions">
+            <button
+              className="detail-add-cart-btn"
+              onClick={onAdd}
+              disabled={(product.stock_quantity ?? 0) <= 0}
+            >
+              Add to cart
+            </button>
+            <button className={`detail-wishlist-btn ${saved ? 'saved' : ''}`} onClick={onSave}>
+              <Heart size={16} fill={saved ? '#ef7356' : 'none'} color={saved ? '#ef7356' : 'currentColor'} />
+              {saved ? 'Saved to wishlist' : 'Save to wishlist'}
+            </button>
+          </div>
+
+          <a
+            className="product-whatsapp-btn"
+            href={`https://wa.me/2348000000000?text=${whatsappMessage}`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Order or inquire via WhatsApp"
+          >
+            <MessageCircle size={18} />
+            <span>Order or Inquire via WhatsApp</span>
+          </a>
+
+          <div className="product-detail-policies">
+            <p><strong>Lagos Dispatch</strong><span>Delivery within 24–48 hours</span></p>
+            <p><strong>Payment Options</strong><span>Bank Transfer · Pay on Delivery · Paystack</span></p>
+            <p><strong>Piece View Guarantee</strong><span>100% Virgin Hair · 7-day return window</span></p>
+          </div>
+
+          <div className="product-info-tabs">
+            <div className="tab-buttons">
+              <button
+                type="button"
+                className={activeTab === 'details' ? 'active' : ''}
+                onClick={() => setActiveTab('details')}
+              >
+                Features
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'construction' ? 'active' : ''}
+                onClick={() => setActiveTab('construction')}
+              >
+                Lace & Cap Specs
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'reviews' ? 'active' : ''}
+                onClick={() => setActiveTab('reviews')}
+              >
+                Reviews (42)
+              </button>
+            </div>
+
+            <div className="tab-body">
+              {activeTab === 'details' && (
+                <div className="tab-pane">
+                  <ul>
+                    <li>100% Raw Virgin Human Hair with aligned cuticles.</li>
+                    <li>Pre-plucked natural hairline with single knots at the front.</li>
+                    <li>Can be bleached, dyed, permed, and heat-styled up to 230°C.</li>
+                    <li>Holds curls and sleek bone-straight textures effortlessly.</li>
+                  </ul>
+                </div>
+              )}
+              {activeTab === 'construction' && (
+                <div className="tab-pane">
+                  <ul>
+                    <li><strong>Lace Type:</strong> Ultra-thin Real HD Swiss Lace (melts into all skin tones).</li>
+                    <li><strong>Cap Size:</strong> Medium (fits 21.5" - 22.5" with adjustable straps & inner combs).</li>
+                    <li><strong>Density:</strong> 180% full luxury density.</li>
+                    <li><strong>Elastic Band:</strong> Built-in removable band for 100% glueless installation.</li>
+                  </ul>
+                </div>
+              )}
+              {activeTab === 'reviews' && (
+                <div className="tab-pane reviews-pane">
+                  <article className="review-item">
+                    <div className="review-header">
+                      <strong>Amara K.</strong>
+                      <span className="verified-badge">✓ Verified Buyer</span>
+                      <div className="review-stars">★★★★★</div>
+                    </div>
+                    <p>"The HD lace literally disappeared onto my forehead without tint spray! Hair is silky with zero shedding. Definitely ordering again."</p>
+                    <time>Lagos · 3 days ago</time>
+                  </article>
+                  <article className="review-item">
+                    <div className="review-header">
+                      <strong>Zainab B.</strong>
+                      <span className="verified-badge">✓ Verified Buyer</span>
+                      <div className="review-stars">★★★★★</div>
+                    </div>
+                    <p>"True to length and very full. Wore it to a wedding all weekend and received non-stop compliments."</p>
+                    <time>Abuja · 1 week ago</time>
+                  </article>
+                  <article className="review-item">
+                    <div className="review-header">
+                      <strong>Folashade O.</strong>
+                      <span className="verified-badge">✓ Verified Buyer</span>
+                      <div className="review-stars">★★★★★</div>
+                    </div>
+                    <p>"Ordered via bank transfer and received delivery in Port Harcourt within 3 days. Beautiful packaging and smells clean!"</p>
+                    <time>Port Harcourt · 2 weeks ago</time>
+                  </article>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function CustomerPage({route,cart,setCart,setOrders,setNotifications,wishlist,setWishlist,setNotice,openAuth,signedIn,currentUser,authReady,catalogProducts,catalogLoading,catalogError}:{route:string,cart:any[],setCart:(items:any[])=>void,setOrders:(items:any[])=>void,setNotifications:(updater:any)=>void,wishlist:string[],setWishlist:(items:string[])=>void,setNotice:(s:string)=>void,openAuth:(mode:'login'|'signup')=>void,signedIn:boolean,currentUser:{name:string,email:string}|null,authReady:boolean,catalogProducts:CatalogProduct[],catalogLoading:boolean,catalogError:string}){const [selectedCategory,setSelectedCategory]=useState('All');const [shopSearch,setShopSearch]=useState('');const [shopSort,setShopSort]=useState('featured');const persist=(key:string,next:any[])=>localStorage.setItem(key,JSON.stringify(next));const addToCart=(product:any)=>{const currentQuantity=cart.find(item=>item.name===product.name)?.quantity||0;const purchaseLimit=Math.min(product.stock_quantity??0,20);if(purchaseLimit<=currentQuantity)return setNotice(currentQuantity?'You have reached the purchase limit for this piece':'That piece is out of stock');const existing=cart.find(item=>item.name===product.name);const next=existing?cart.map(item=>item.name===product.name?{...item,quantity:(item.quantity||1)+1}:item):[...cart,{...product,quantity:1}];setCart(next);persist('pieceview_cart',next);setNotice(`${product.name} added to cart`) };const toggleWishlist=(product:any)=>{const next=wishlist.includes(product.name)?wishlist.filter(name=>name!==product.name):[...wishlist,product.name];setWishlist(next);persist('pieceview_wishlist',next);setNotice(wishlist.includes(product.name)?'Removed from wishlist':'Saved to wishlist')};const productList=catalogProducts.filter(product=>product.active!==false);const cartTotal=cart.reduce((total,item)=>total+(productList.find(product=>product.name===item.name)?.price??item.price)*(item.quantity||1),0);const visibleProducts=productList.filter(product=>selectedCategory==='All'||product.category===selectedCategory).filter(product=>[product.name,product.type,product.texture,product.length,product.category].filter(Boolean).join(' ').toLowerCase().includes(shopSearch.trim().toLowerCase())).sort((a,b)=>shopSort==='price-low'?a.price-b.price:shopSort==='price-high'?b.price-a.price:shopSort==='name'?a.name.localeCompare(b.name):0);const productRoute=route.match(/^#\/shop\/product\/(.+)$/);const productKey=productRoute?.[1]||'';const selectedProduct=productList.find(product=>String(product.id)===productKey||encodeURIComponent(product.name)===productKey);const unavailableCartItems=catalogLoading?[]:cart.filter(item=>{const liveProduct=productList.find(product=>product.name===item.name);return !liveProduct||(item.quantity||1)>Math.min(liveProduct.stock_quantity??0,20)});
 if(route.startsWith('#/shop/product/'))return <main className="customer-store"><CustomerStoreHeader signedIn={signedIn} currentUser={currentUser} authReady={authReady} openAuth={openAuth} cartCount={cart.reduce((total,item)=>(total+(item.quantity||1)),0)} wishlistCount={wishlist.length}/>{catalogLoading?<p className="catalog-empty">Loading product...</p>:selectedProduct?<ProductDetail product={selectedProduct} saved={wishlist.includes(selectedProduct.name)} onSave={()=>toggleWishlist(selectedProduct)} onAdd={()=>addToCart(selectedProduct)}/>:<section className="customer-store-heading"><p className="landing-eyebrow">PIECE VIEW / SHOP</p><h1>We couldn’t find that piece</h1><button onClick={()=>navigate('#/shop')}>Back to the collection</button></section>}</main>

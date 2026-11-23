@@ -1,1 +1,35 @@
-.checkout-page fieldset>label{display:flex;align-items:center;gap:9px;margin:12px 0}.checkout-page fieldset>label input{width:16px;height:16px;accent-color:var(--coral)}.checkout-payment-hint{margin:3px 0 0 25px;color:#777c73;font-size:11px;line-height:1.5}.payment-return-page{max-width:660px;margin:72px auto;padding:42px;background:#fff;border:1px solid var(--line);border-radius:12px}.payment-return-page h1{font-family:Georgia,serif;font-size:clamp(28px,4vw,42px);font-weight:500;margin:8px 0 12px}.payment-return-page>p:not(.landing-eyebrow){color:#74796f;line-height:1.7}.payment-return-page>div{display:flex;gap:9px;margin-top:24px}.payment-return-page button{height:42px;border:0;border-radius:7px;background:var(--ink);color:#fff;padding:0 15px}.payment-return-page .payment-retry{background:#f0eee8;color:var(--ink)}@media(max-width:720px){.payment-return-page{margin:28px 12px;padding:28px 20px}}
+.checkout-page fieldset>label{display:flex;align-items:center;gap:9px;margin:12px 0;cursor:pointer}
+.checkout-page fieldset>label input{width:16px;height:16px;accent-color:var(--coral)}
+.checkout-payment-hint{margin:4px 0 10px 25px;color:#777c73;font-size:11px;line-height:1.5}
+.payment-badge-pill{background:#eaf5ec;color:#2e793f;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;margin-left:6px}
+
+.bank-transfer-box{margin:10px 0 16px 25px;padding:16px;background:#fbfbf9;border:1px solid #e7e5de;border-radius:10px}
+.transfer-instructions{margin:0 0 14px;color:#676e62;font-size:12px;line-height:1.6}
+.bank-account-card{background:#fff;border:1px solid #dfded5;border-radius:8px;padding:12px 14px;display:grid;gap:8px;box-shadow:0 2px 6px rgba(0,0,0,0.02)}
+.bank-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;border-bottom:1px solid #f2f1ec;padding:6px 0}
+.bank-row:last-child{border-bottom:0;padding-bottom:0}
+.bank-row span{color:#888e83;font-size:11px}
+.acct-number-copy{display:flex;align-items:center;gap:8px}
+.number-display{font-family:monospace;font-size:14px;letter-spacing:1px;background:#f3f1ea;padding:3px 7px;border-radius:5px}
+.copy-acct-btn{height:28px!important;padding:0 9px!important;font-size:10px!important;font-weight:700!important;background:#20231f!important;color:#fff!important;border-radius:5px!important}
+.amount-highlight{color:#b66a54;font-size:14px;font-weight:800}
+
+.transfer-inputs{margin-top:14px;display:grid;gap:10px}
+.transfer-inputs label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#454b40}
+.transfer-inputs label span{font-size:10px;font-weight:400;color:#888e83}
+.transfer-inputs input{height:40px;border:1px solid #dedfd8;border-radius:7px;padding:0 10px;font-size:12px;background:#fff}
+.required-star{color:#b95f4d;font-weight:800}
+
+.payment-return-page{max-width:660px;margin:72px auto;padding:42px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.payment-return-page h1{font-family:Georgia,serif;font-size:clamp(28px,4vw,42px);font-weight:500;margin:8px 0 12px}
+.payment-return-page>p:not(.landing-eyebrow){color:#74796f;line-height:1.7}
+.payment-return-page>div{display:flex;gap:9px;margin-top:24px}
+.payment-return-page button{height:42px;border:0;border-radius:7px;background:var(--ink);color:#fff;padding:0 15px}
+.payment-return-page .payment-retry{background:#f0eee8;color:var(--ink)}
+
+@media(max-width:720px){
+  .bank-transfer-box{margin-left:0;padding:12px}
+  .bank-row{flex-direction:column;align-items:flex-start;gap:3px}
+  .acct-number-copy{width:100%;justify-content:space-between}
+  .payment-return-page{margin:28px 12px;padding:28px 20px}
+}
